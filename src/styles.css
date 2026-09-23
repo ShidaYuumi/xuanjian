@@ -108,7 +108,9 @@ a { color: inherit; text-decoration: none; }
 .dao-marker small { font: 8px var(--mono); color: var(--tone); opacity: .75; }
 .dao-marker:hover, .dao-marker:focus-visible { border-color: var(--tone); background: rgba(20, 42, 40, .95); color: #fff1d2; z-index: 5; }
 .dao-marker-active { border-color: var(--tone); color: #f9e9c8; background: rgba(29, 54, 50, .95); box-shadow: 0 0 0 3px color-mix(in srgb, var(--tone), transparent 89%), 0 0 22px color-mix(in srgb, var(--tone), transparent 78%); }
-.dao-marker-dense { display: none; }
+.dao-marker-dense { min-width: 0; width: 48px; height: 48px; padding: 0; border-radius: 50%; border-color: transparent; background: transparent; box-shadow: none; backdrop-filter: none; }
+.dao-marker-dense span, .dao-marker-dense small { display: none; }
+.dao-marker-dense:hover, .dao-marker-dense:focus-visible { border-color: var(--tone); background: rgba(20, 42, 40, .22); box-shadow: 0 0 14px color-mix(in srgb, var(--tone), transparent 65%); }
 .spell-labels { z-index: 4; }
 .spell-seal { display: flex; align-items: center; gap: 4px; padding: 3px 7px 3px 4px; min-width: 68px; min-height: 27px; border: 1px solid color-mix(in srgb, var(--tone), transparent 62%); background: rgba(7, 24, 25, .86); white-space: nowrap; box-shadow: 0 0 14px color-mix(in srgb, var(--tone), transparent 86%); backdrop-filter: blur(6px); }
 .spell-seal i { font: normal 13px 'Ma Shan Zheng', serif; color: var(--tone); width: 17px; text-align: center; }
@@ -335,8 +337,9 @@ a { color: inherit; text-decoration: none; }
   .heart-title strong { font-size: 16px; }
   .dao-marker { min-width: 41px; height: 24px; padding-inline: 4px; gap: 3px; }
   .dao-marker span { font-size: 9px; }
-  .dao-marker-dense { display: none; }
-  .dao-marker-mobile-hidden { display: none; }
+  .dao-marker-dense, .dao-marker-mobile-hidden { min-width: 0; width: 30px; height: 30px; padding: 0; border-radius: 50%; border-color: transparent; background: transparent; box-shadow: none; backdrop-filter: none; }
+  .dao-marker-mobile-hidden span, .dao-marker-mobile-hidden small { display: none; }
+  .dao-marker-mobile-hidden:hover, .dao-marker-mobile-hidden:focus-visible { border-color: var(--tone); background: rgba(20, 42, 40, .22); box-shadow: 0 0 14px color-mix(in srgb, var(--tone), transparent 65%); }
   .spell-seal { min-width: 59px; padding-right: 4px; }
   .spell-seal span { font-size: 8px; }
   .scene-coordinates { left: 10px; bottom: 10px; }
