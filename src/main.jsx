@@ -1,60 +1,56 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  ArrowDownRight, ArrowUpRight, BookOpen, ChevronDown, Compass, Focus,
+  ArrowDownRight, ArrowUpRight, BookOpen, Compass,
   HelpCircle, Info, Search, Sparkles, X,
 } from 'lucide-react';
 import { daoGroups, allDao, theoryPairs } from './data.js';
+import ThreeDaoScene from './ThreeDaoScene.jsx';
 import './styles.css';
 
 const iconByGroup = { 阴阳: '☯', 五德: '五', 十二炁: '炁', 三雷: '雷', 并古: '古', 独立: '剑' };
+const matchesDao = (dao, query) => `${dao.name} ${dao.subtitle} ${dao.spells.map((spell) => `${spell.name} ${spell.alias ?? ''}`).join(' ')}`.toLowerCase().includes(query);
 
 function App() {
   const [groupId, setGroupId] = useState('五德');
   const [selectedId, setSelectedId] = useState('坎水');
   const [search, setSearch] = useState('');
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [activeSpell, setActiveSpell] = useState(null);
   const [showTheory, setShowTheory] = useState(false);
   const [showSources, setShowSources] = useState(false);
-  const [dragging, setDragging] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const stageRef = useRef(null);
-  const dragStart = useRef(null);
-  const mobileLayout = window.innerWidth <= 680;
 
   const activeGroup = daoGroups.find((group) => group.id === groupId) ?? daoGroups[1];
   const normalizedQuery = search.trim().toLowerCase();
   const visibleDaos = useMemo(() => {
     if (normalizedQuery) {
-      return allDao.filter((dao) => `${dao.name} ${dao.subtitle} ${dao.spells.map((spell) => `${spell.name} ${spell.alias ?? ''}`).join(' ')}`.toLowerCase().includes(normalizedQuery));
+      return allDao.filter((dao) => matchesDao(dao, normalizedQuery));
     }
     return activeGroup.items;
   }, [activeGroup, normalizedQuery]);
   const selected = allDao.find((dao) => dao.id === selectedId) ?? allDao.find((dao) => dao.name === '坎水');
 
   const chooseDao = (dao) => {
+    if (!dao) return;
     setSelectedId(dao.id);
     setActiveSpell(null);
     if (dao.group !== groupId) setGroupId(dao.group);
   };
 
-  const pointerDown = (event) => {
-    if (event.button !== 0 || event.target.closest('button')) return;
-    dragStart.current = { x: event.clientX, y: event.clientY, tilt: { ...tilt } };
-    stageRef.current?.setPointerCapture?.(event.pointerId);
-    setDragging(true);
+  const chooseGroup = (group) => {
+    setGroupId(group.id);
+    setSearch('');
+    setSelectedId(group.items[0]?.id ?? selectedId);
+    setActiveSpell(null);
   };
-  const pointerMove = (event) => {
-    if (!dragStart.current) return;
-    const dx = event.clientX - dragStart.current.x;
-    const dy = event.clientY - dragStart.current.y;
-    setTilt({
-      x: Math.max(-15, Math.min(15, dragStart.current.tilt.x + dy * -0.09)),
-      y: Math.max(-20, Math.min(20, dragStart.current.tilt.y + dx * 0.09)),
-    });
+  const chooseSpell = (name) => setActiveSpell((current) => current === name ? null : name);
+  const updateSearch = (value) => {
+    setSearch(value);
+    const query = value.trim().toLowerCase();
+    if (!query || matchesDao(selected, query)) return;
+    const firstMatch = allDao.find((dao) => matchesDao(dao, query));
+    if (firstMatch) chooseDao(firstMatch);
   };
-  const pointerUp = () => { dragStart.current = null; setDragging(false); };
 
   return (
     <main className="app-shell">
@@ -95,7 +91,7 @@ function App() {
           <div className="rail-heading"><span>观道</span><span className="rail-heading-en">PATHS</span></div>
           <div className="group-list" role="tablist" aria-label="道统分类">
             {daoGroups.map((group) => (
-              <button key={group.id} role="tab" aria-selected={group.id === groupId} className={`group-option ${group.id === groupId && !normalizedQuery ? 'group-active' : ''}`} onClick={() => { setGroupId(group.id); setSearch(''); setSelectedId(group.items[0]?.id ?? selectedId); }}>
+              <button key={group.id} role="tab" aria-selected={group.id === groupId} className={`group-option ${group.id === groupId && !normalizedQuery ? 'group-active' : ''}`} onClick={() => chooseGroup(group)}>
                 <span className="group-glyph">{iconByGroup[group.id]}</span>
                 <span className="group-text"><strong>{group.label}</strong><small>{group.kicker}</small></span>
                 <span className="group-count">{String(group.items.length).padStart(2, '0')}</span>
@@ -113,56 +109,17 @@ function App() {
           <div className="scene-heading">
             <div><span className="section-index">玄鉴 · {activeGroup.index}</span><h2>{normalizedQuery ? '搜寻道统' : activeGroup.title}</h2></div>
             <div className="scene-tools">
-              <label className="search-box"><Search size={15} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="寻一脉道统 / 神通" aria-label="搜索道统或神通" />{search && <button onClick={() => setSearch('')} aria-label="清除搜索"><X size={13} /></button>}</label>
-              <span className="drag-hint"><Compass size={14} />拖曳观星</span>
+              <label className="search-box"><Search size={15} /><input value={search} onChange={(e) => updateSearch(e.target.value)} placeholder="寻一脉道统 / 神通" aria-label="搜索道统或神通" />{search && <button onClick={() => setSearch('')} aria-label="清除搜索"><X size={13} /></button>}</label>
+              <span className="drag-hint"><Compass size={14} />拨转道轨</span>
             </div>
           </div>
-          <div className={`scene-frame ${dragging ? 'is-dragging' : ''}`} ref={stageRef} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}>
-            <div className="scene-backdrop" />
-            <div className="scene-runes rune-one">天道酬勤 · 道法自然 · 炼神返虚</div>
-            <div className="scene-runes rune-two">玄鉴照诸天 · 灵炁生万法</div>
-            <svg className="star-lines" viewBox="0 0 800 610" preserveAspectRatio="none" aria-hidden="true">
-              <ellipse cx="400" cy="305" rx="312" ry="126" transform="rotate(-18 400 305)" />
-              <ellipse cx="400" cy="305" rx="268" ry="182" transform="rotate(28 400 305)" />
-              <ellipse cx="400" cy="305" rx="184" ry="250" transform="rotate(72 400 305)" />
-              <path d="M112 430 C230 120 516 70 694 336" />
-              <path d="M172 168 C318 360 521 456 681 193" />
-              <circle cx="400" cy="305" r="5" className="svg-star" />
-              <circle cx="131" cy="231" r="2" className="svg-star" />
-              <circle cx="674" cy="390" r="2" className="svg-star" />
-              <circle cx="516" cy="97" r="2" className="svg-star" />
-            </svg>
-          <div className="scene-transform" style={{ '--tilt-x': `${tilt.x}deg`, '--tilt-y': `${tilt.y}deg` }}>
-              <div className="orbit orbit-a" /><div className="orbit orbit-b" /><div className="orbit orbit-c" />
-              <div className="globe-wrap" aria-hidden="true">
-                <div className="globe-halo" />
-                <div className="globe"><span className="globe-calligraphy">玄</span><i className="globe-glint" /></div>
-                <div className="globe-ring ring-gold" /><div className="globe-ring ring-cyan" />
-                <span className="globe-caption">玄鉴 · 太虚</span>
-              </div>
-              {visibleDaos.map((dao, index) => {
-                const count = Math.max(visibleDaos.length, 1);
-                const angle = (index / count) * Math.PI * 2 - Math.PI / 2;
-                const radius = count > 14
-                  ? (index % 2 === 0 ? (mobileLayout ? 164 : 218) : (mobileLayout ? 119 : 158))
-                  : count > 7 ? (mobileLayout ? 137 : 182) : (mobileLayout ? 128 : 170);
-                const z = Math.sin(angle * 2.2 + index * 1.13) * 52;
-                const x = Math.cos(angle) * radius;
-                const y = Math.sin(angle) * radius * 0.69;
-                return (
-                  <button key={dao.id} className={`dao-orb ${selectedId === dao.id ? 'dao-orb-active' : ''} ${selectedId === dao.id ? `tone-${dao.tone}` : ''}`} style={{ '--x': `${x}px`, '--y': `${y}px`, '--z': `${z}px`, '--tone': dao.color, '--delay': `${index * 14}ms` }} onClick={(event) => { event.stopPropagation(); chooseDao(dao); }} aria-label={`${dao.name}道统，${dao.spells.length}项神通`}>
-                    <span className="dao-orb-light" /><span className="dao-orb-label">{dao.name}</span><span className="dao-orb-count">{dao.spells.length}</span>
-                  </button>
-                );
-              })}
-              {visibleDaos.length === 0 && <div className="empty-orbit">未寻得此道<br /><span>试试别的字词</span></div>}
-            </div>
-            <div className="scene-compass north">N<span>北辰</span></div>
-            <div className="scene-coordinates"><span>观想坐标</span><strong>三界 · 太虚 · {activeGroup.shortLabel}</strong></div>
-            <div className="scene-legend"><span><i className="legend-dot selected-dot" />已选道统</span><span><i className="legend-dot" />同体系道统</span></div>
-            <div className="scene-vignette" />
+          <ThreeDaoScene daos={visibleDaos} selected={selected} activeSpell={activeSpell} onChooseDao={chooseDao} onChooseSpell={chooseSpell} groupName={activeGroup.shortLabel} />
+          {visibleDaos.length === 0 && <div className="scene-empty-result">未寻得此道 · 试试别的字词</div>}
+          <div className="dao-ribbon" aria-label="当前可选道统">
+            <span className="dao-ribbon-label">诸道 / {String(visibleDaos.length).padStart(2, '0')}</span>
+            <div className="dao-ribbon-scroll">{visibleDaos.map((dao) => <button key={dao.id} className={selectedId === dao.id ? 'ribbon-active' : ''} onClick={() => chooseDao(dao)} aria-pressed={selectedId === dao.id}>{dao.name}<small>{dao.spells.length || '—'}</small></button>)}</div>
           </div>
-          <div className="scene-caption"><span><Sparkles size={13} />{normalizedQuery ? `寻得 ${visibleDaos.length} 条道统 / 神通` : activeGroup.description}</span><span className="caption-right">点击星曜 · 阅览道轨</span></div>
+          <div className="scene-caption"><span><Sparkles size={13} />{normalizedQuery ? `寻得 ${visibleDaos.length} 条道统 / 神通` : activeGroup.description}</span><span className="caption-right">道统入鉴 · 神通成印</span></div>
         </div>
 
         <aside className="detail-panel" aria-live="polite">
@@ -176,7 +133,7 @@ function App() {
           <div className="detail-divider"><span>所载神通</span><span>{String(selected?.spells.length ?? 0).padStart(2, '0')} RECORDS</span></div>
           {selected?.spells.length ? (
             <div className="spell-list">
-              {selected.spells.map((spell, index) => <button key={spell.name} className={`spell-row ${activeSpell === spell.name ? 'spell-selected' : ''}`} onClick={() => setActiveSpell(activeSpell === spell.name ? null : spell.name)}><span className="spell-number">{String(index + 1).padStart(2, '0')}</span><span className="spell-name">〖{spell.name}〗</span>{spell.alias && <span className="spell-alias">又名 {spell.alias}</span>}<ArrowUpRight size={13} className="spell-arrow" /></button>)}
+              {selected.spells.map((spell, index) => <button key={spell.name} className={`spell-row ${activeSpell === spell.name ? 'spell-selected' : ''}`} aria-pressed={activeSpell === spell.name} onClick={() => chooseSpell(spell.name)}><span className="spell-number">{String(index + 1).padStart(2, '0')}</span><span className="spell-name">〖{spell.name}〗</span>{spell.alias && <span className="spell-alias">又名 {spell.alias}</span>}<ArrowUpRight size={13} className="spell-arrow" /></button>)}
             </div>
           ) : <div className="no-spells">暂未见明确神通条目<br /><small>并非无道，或为秘而不宣</small></div>}
           {activeSpell && <div className="spell-note"><Sparkles size={13} /><span>「{activeSpell}」已载入观想。神通详情待原文考据补全。</span></div>}
@@ -203,7 +160,7 @@ function App() {
       <section className="library-section" id="library">
         <div className="library-header"><div><span className="section-index">卷帙总览 · 58 道</span><h2>诸脉神通索引</h2></div><span className="library-count">可依左侧分类筛选 · 点击道统可定位</span></div>
         <div className="library-grid">{daoGroups.map((group) => <article className="library-group" key={group.id}>
-          <button className="library-group-head" onClick={() => { setGroupId(group.id); setSearch(''); setSelectedId(group.items[0]?.id ?? selectedId); document.querySelector('#atlas')?.scrollIntoView({ behavior: 'smooth' }); }}><span className="library-icon">{iconByGroup[group.id]}</span><span><strong>{group.label}</strong><small>{group.items.length} 道 · {group.kicker}</small></span><ArrowUpRight size={14} /></button>
+          <button className="library-group-head" onClick={() => { chooseGroup(group); document.querySelector('#atlas')?.scrollIntoView({ behavior: 'smooth' }); }}><span className="library-icon">{iconByGroup[group.id]}</span><span><strong>{group.label}</strong><small>{group.items.length} 道 · {group.kicker}</small></span><ArrowUpRight size={14} /></button>
           <div className="library-dao-list">{group.items.map((dao) => <button key={dao.id} onClick={() => { chooseDao(dao); document.querySelector('#atlas')?.scrollIntoView({ behavior: 'smooth' }); }}><span>{dao.name}</span><small>{dao.spells.length ? `${dao.spells.length} 通` : '待考'}</small></button>)}</div>
         </article>)}</div>
       </section>
