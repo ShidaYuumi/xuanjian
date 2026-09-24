@@ -184,13 +184,13 @@ function makeAspect(tone, color, glowTexture) {
 function makeDaoNode(dao, position, glowTexture) {
   const group = new THREE.Group();
   const tone = new THREE.Color(palette[dao.tone] ?? dao.color);
-  const bloom = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: tone, transparent: true, opacity: .38, blending: THREE.AdditiveBlending, depthWrite: false }));
-  bloom.scale.set(.92, .92, 1);
-  const stone = new THREE.Mesh(new THREE.IcosahedronGeometry(.125, 1), new THREE.MeshPhysicalMaterial({ color: tone, emissive: tone, emissiveIntensity: .34, metalness: .45, roughness: .3, flatShading: true }));
-  const trace = ring(.23, tone, .58, .009);
+  const bloom = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: tone, transparent: true, opacity: .48, blending: THREE.AdditiveBlending, depthWrite: false }));
+  bloom.scale.set(1.12, 1.12, 1);
+  const stone = new THREE.Mesh(new THREE.IcosahedronGeometry(.145, 1), new THREE.MeshPhysicalMaterial({ color: tone, emissive: tone, emissiveIntensity: .42, metalness: .45, roughness: .3, flatShading: true }));
+  const trace = ring(.265, tone, .64, .009);
   trace.rotation.x = .48;
   group.add(bloom, stone, trace);
-  const target = new THREE.Mesh(new THREE.SphereGeometry(.31, 8, 6), new THREE.MeshBasicMaterial({ visible: false }));
+  const target = new THREE.Mesh(new THREE.SphereGeometry(.36, 8, 6), new THREE.MeshBasicMaterial({ visible: false }));
   target.userData.dao = dao;
   group.add(target);
   group.position.copy(position);
@@ -257,11 +257,12 @@ export default function ThreeDaoScene({ daos, selected, activeSpell, onChooseDao
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(42, 1, .1, 100);
-    camera.position.set(0, 0, 10);
+    camera.position.set(0, 0, 10.8);
     const field = new THREE.Group();
     scene.add(field);
     const glow = makeGlowTexture();
     const heart = makeHeart(glow);
+    heart.scale.setScalar(1.16);
     field.add(heart);
     const stars = makeStars();
     scene.add(stars);
@@ -309,6 +310,7 @@ export default function ThreeDaoScene({ daos, selected, activeSpell, onChooseDao
         heart.userData.orbitA.rotation.z = -.42 + seconds * .045;
         heart.userData.orbitB.rotation.z = .36 - seconds * .037;
         heart.userData.fragments.rotation.z = seconds * .065;
+        if (runtime.selectedTrace) runtime.selectedTrace.material.opacity = .29 + Math.sin(seconds * 1.1) * .07;
         if (runtime.selectionGroup?.userData.aspect) runtime.selectionGroup.userData.aspect.rotation.z = seconds * .022;
         if (runtime.manifestGroup) runtime.manifestGroup.rotation.z = Math.sin(seconds * 1.2) * .055;
         runtime.daoNodes.forEach((node) => {
@@ -337,7 +339,8 @@ export default function ThreeDaoScene({ daos, selected, activeSpell, onChooseDao
       runtime.height = height;
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
-      field.scale.setScalar(Math.min(1, Math.max(.56, width / 620)));
+      const narrow = window.matchMedia('(max-width: 680px)').matches;
+      field.scale.setScalar(Math.min(1, Math.max(narrow ? .77 : .56, width / (narrow ? 540 : 620))));
       renderer.setSize(width, height, false);
       draw(performance.now());
     }
@@ -368,6 +371,7 @@ export default function ThreeDaoScene({ daos, selected, activeSpell, onChooseDao
       if (runtime.daoGroup) disposeTree(runtime.daoGroup);
       if (runtime.spellGroup) disposeTree(runtime.spellGroup);
       if (runtime.manifestGroup) disposeTree(runtime.manifestGroup);
+      if (runtime.selectedTrace) disposeTree(runtime.selectedTrace);
       if (runtime.selectionGroup) disposeTree(runtime.selectionGroup);
       disposeTree(heart);
       disposeTree(stars);
@@ -405,7 +409,22 @@ export default function ThreeDaoScene({ daos, selected, activeSpell, onChooseDao
       runtime.manifestGroup = null;
     }
     if (runtime.selectionGroup) disposeTree(runtime.selectionGroup);
+    if (runtime.selectedTrace) {
+      disposeTree(runtime.selectedTrace);
+      runtime.selectedTrace = null;
+    }
     const color = new THREE.Color(palette[selected.tone] ?? selected.color);
+    const selectedNode = runtime.daoNodes.find((node) => node.userData.target.userData.dao.id === selected.id);
+    if (selectedNode) {
+      const start = selectedNode.position.clone();
+      const end = start.clone().setZ(0).normalize().multiplyScalar(1.06);
+      end.z = .1;
+      const control = start.clone().lerp(end, .52);
+      control.z = .55;
+      const trace = line(new THREE.QuadraticBezierCurve3(start, control, end).getPoints(40), color, .36);
+      runtime.field.add(trace);
+      runtime.selectedTrace = trace;
+    }
     const group = new THREE.Group();
     group.userData.sharedGlow = runtime.glow;
     const nodes = spellPositions(spells.length).map((position, index) => {
@@ -447,13 +466,13 @@ export default function ThreeDaoScene({ daos, selected, activeSpell, onChooseDao
     runtime.selectionGroup = selection;
     runtime.daoNodes.forEach((node) => {
       const active = node.userData.target.userData.dao.id === selected.id;
-      node.userData.stone.material.emissiveIntensity = active ? 1.8 : .34;
-      node.userData.bloom.material.opacity = active ? .84 : .38;
-      node.userData.trace.material.opacity = active ? .95 : .58;
+      node.userData.stone.material.emissiveIntensity = active ? 1.8 : .42;
+      node.userData.bloom.material.opacity = active ? .88 : .48;
+      node.userData.trace.material.opacity = active ? .95 : .64;
       node.scale.setScalar(active ? 1.4 : 1);
     });
     runtime.draw(performance.now());
-  }, [selected, spells]);
+  }, [daos, selected, spells]);
 
   useEffect(() => {
     const runtime = runtimeRef.current;
@@ -533,7 +552,9 @@ export default function ThreeDaoScene({ daos, selected, activeSpell, onChooseDao
 
   return (
     <div className={`scene-frame ${dragging ? 'is-dragging' : ''}`} ref={frameRef} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
-      <div className="scene-backdrop" aria-hidden="true" />
+      <div className="scene-backdrop" aria-hidden="true">
+        <div className="astrolabe-disk"><span className="disk-meridian" /><span className="disk-equator" /><span className="disk-inner" /></div>
+      </div>
       <div className="scene-runes rune-one" aria-hidden="true">太虚为镜 · 万法有迹</div>
       <div className="scene-runes rune-two" aria-hidden="true">一念观道 · 百炁朝元</div>
       <canvas ref={canvasRef} className="three-canvas" aria-label="可拖动的三维道统星图" />
