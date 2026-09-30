@@ -1,129 +1,231 @@
-const makeDao = (group, groupLabel, groupTitle, index, name, spellNames, options = {}) => ({
-  id: name,
-  code: String(index).padStart(2, '0'),
-  group,
-  groupLabel,
-  groupTitle,
-  name,
-  spells: spellNames.map((spell) => typeof spell === 'string' ? { name: spell } : spell),
-  description: options.description ?? '道统意象与权柄随修士、果位与时代而变，此处仅录其名目，具体道论以正文及考据为准。',
-  glyph: options.glyph ?? name.slice(0, 1),
-  color: options.color ?? '#a9c8b5',
-  tone: options.tone ?? 'jade',
-  tierLabel: options.tierLabel ?? '玄门道统',
-  subtitle: options.subtitle ?? groupLabel,
+import rawData from '../data/道统-神通.json' with { type: 'json' };
+
+// 道统元数据配置（字模、色系、视觉基调、介绍、层级标签等）
+export const daoMetaConfig = {
+  // 阴阳
+  '太阳': { glyph: '日', color: '#d9ae60', tone: 'gold', tierLabel: '三阳 · 日间第一显', description: '日间第一显，诸阳景从。日月交替之际，诸阳道统皆有所应。' },
+  '少阳': { glyph: '曦', color: '#c8b56e', tone: 'gold', tierLabel: '三阳 · 阳中生阴', description: '阳中生阴，阴消阳长；三阳之一，脱身如水，有变化少阳成阴之妙。' },
+  '明阳': { glyph: '明', color: '#d5a558', tone: 'gold', tierLabel: '三阳 · 煌煌帝威', description: '日间第二显，兼具光明、生发与帝威之象；主六合，以君驭臣，制衡厥阴。' },
+  '太阴': { glyph: '月', color: '#d5d9d0', tone: 'moon', tierLabel: '三阴 · 诸阴所宗', description: '诸阴所宗，月与道藏之象；奔月求金，避劫消灾，化分仪之身行走红尘。' },
+  '少阴': { glyph: '霜', color: '#a9b9c4', tone: 'moon', tierLabel: '三阴 · 寒燥相和', description: '三阴之一，主寒却有火，主阴却燥；存性保命，驱策水火，孕养弱水。' },
+  '厥阴': { glyph: '幽', color: '#a8a0ad', tone: 'moon', tierLabel: '三阴 · 玄阴之境', description: '三阴之一，避世无漏，平错劣成全阴；展开与世隔绝领域，消解明阳帝权。' },
+
+  // 五德 · 金
+  '兑金': { glyph: '兑', color: '#c8bba0', tone: 'silver', tierLabel: '金德 · 正位', description: '申酉金之正位，取秋白肃杀、秋露折毁之象；不穷之锋贯绝天地。' },
+  '逍金': { glyph: '匮', color: '#c1a876', tone: 'gold', tierLabel: '金德 · 蕴位', description: '逍遥藏养之金，避世修仙；入世太深则道果难成。' },
+  '齐金': { glyph: '齐', color: '#c3bd9c', tone: 'silver', tierLabel: '金德 · 收位', description: '收蓄圆满之金，汇聚精华，气象大成契合丹道；与库金相配相吸。' },
+  '库金': { glyph: '库', color: '#b4bdb7', tone: 'silver', tierLabel: '金德 · 藏位', description: '潜藏受纳之金，启阵法藏秘，养金精资粮，腹存法器锐利藏锋。' },
+  '庚金': { glyph: '庚', color: '#d0ad77', tone: 'gold', tierLabel: '金德 · 变位', description: '从革变革之金，知损知毁，身如飞沙去故嬗变；金煞坚不可摧，克制赤断镞。' },
+
+  // 五德 · 木
+  '正木': { glyph: '巽', color: '#8eaa83', tone: 'jade', tierLabel: '木德 · 正位', description: '甲乙木之正位，号令风雷以避火，栋梁密藏不为局势所动。' },
+  '保木': { glyph: '隰', color: '#829e73', tone: 'jade', tierLabel: '木德 · 藏位', description: '藏养滋养之木，青光铺天盖地笼罩四方，隔离庇护他人抵御重伤。' },
+  '集木': { glyph: '林', color: '#849b6c', tone: 'jade', tierLabel: '木德 · 收位', description: '众木成林之象，草木凝滞太虚，自动感应危机化为虚幻密林保命。' },
+  '角木': { glyph: '角', color: '#91a982', tone: 'jade', tierLabel: '木德 · 藏位', description: '春木生发之象，行风孳木，重林荡漾破尽隐匿，擅长疗愈生生不息。' },
+  '更木': { glyph: '更', color: '#91a080', tone: 'jade', tierLabel: '木德 · 变位', description: '木德变位，天下之易；行悖五参之一，顺应天序变迁。' },
+
+  // 五德 · 水
+  '坎水': { glyph: '坎', color: '#75a9b3', tone: 'water', tierLabel: '水德 · 正位', description: '水德正位，险峡飞瀑与浩瀚江河交叠；远钓欲念控人心智，从重险中杀出。' },
+  '府水': { glyph: '府', color: '#7398a2', tone: 'water', tierLabel: '水德 · 蕴位', description: '湖泽渊薮之水，弄弱水打压法风；浩瀚虽夺于坎，仍具宿穷冬之寒煞。' },
+  '合水': { glyph: '合', color: '#528d9f', tone: 'water', tierLabel: '水德 · 收位', description: '百川归流、汪洋恣肆之道；兼容并蓄，天海围困镇压，水流化身瞬移走脱。' },
+  '牝水': { glyph: '牝', color: '#78949a', tone: 'water', tierLabel: '水德 · 藏位', description: '深谷玄牝、不死往生之泉；灰光昏沉潜伏销融，最善藏匿遮掩。' },
+  '渌水': { glyph: '渌', color: '#7cae9c', tone: 'jade', tierLabel: '水德 · 变位', description: '清浊沉浮、洞泉夕雨；晚来之雨凝滞腐蚀，洗天地人三劫渡厄去灾。' },
+
+  // 五德 · 火
+  '离火': { glyph: '离', color: '#d07b59', tone: 'ember', tierLabel: '火德 · 正位', description: '火德正位，帝王征伐大势沛然；内孕南明心火化为心府，吞木焚金行走太虚。' },
+  '真火': { glyph: '真', color: '#e18d52', tone: 'ember', tierLabel: '火德 · 正位', description: '先天治命真火，金红真火环身化雉离飞影，驰炎踏火剥夺打落敌手神通。' },
+  '并火': { glyph: '乌', color: '#a85c4c', tone: 'ember', tierLabel: '火德 · 收位', description: '黑红业火升腾，身幻鸟雀极尽杀伐，焚心束命无所遁形。' },
+  '牡火': { glyph: '牡', color: '#c27957', tone: 'ember', tierLabel: '火德 · 藏位', description: '阴阳受藏之火，武器附着游走煞火，五指喷涌成烈焰兵刃浪潮。' },
+  '灴火': { glyph: '灴', color: '#da7652', tone: 'ember', tierLabel: '火德 · 变位', description: '升腾流变之火，沸反盈天瓦解宫宇秩序；身碎化为万千吐火头颅隔断灵识。' },
+
+  // 五德 · 土
+  '艮土': { glyph: '艮', color: '#b19c72', tone: 'earth', tierLabel: '土德 · 正位', description: '土德正位，正源山峦重叠；搬山移岭、勘测地脉，知晓天地灵根所在。' },
+  '戊土': { glyph: '戊', color: '#ae916a', tone: 'earth', tierLabel: '土德 · 正位', description: '中央敦厚之土，最制仙道；彩光抚顶受击坠地，仙无漏霞光庇护众生。' },
+  '归土': { glyph: '归', color: '#9d8b68', tone: 'earth', tierLabel: '土德 · 收位', description: '社稷归心之土，灰黄厚光拉隔原野；天降金环镇压万方，神速加持符箓。' },
+  '宝土': { glyph: '宝', color: '#a59473', tone: 'earth', tierLabel: '土德 · 藏位', description: '藏纳生息之土，善通田事梳理地脉；藏纳宫保命吊命，以尸骨补全躯壳。' },
+  '宣土': { glyph: '宣', color: '#b39a68', tone: 'earth', tierLabel: '土德 · 变位', description: '帝宣中土之道，克制巫妙；身化大如山岳的金甲法身，白气金线锁百会百穴。' },
+  '青宣': { glyph: '青', color: '#7da18b', tone: 'jade', tierLabel: '土德 / 并古 · 特例', description: '初伏仙君借宣土空证而出；青金流转降妖除魔，玄羊交感天地抬举仙基。' },
+
+  // 十二炁
+  '清炁': { glyph: '清', color: '#bfd6ce', tone: 'mist', tierLabel: '十二炁 · 本始', description: '十二炁之始，统领诸法；身如满天风云聚散消散，万千白气乘风逍遥。' },
+  '邃炁': { glyph: '邃', color: '#857d8c', tone: 'moon', tierLabel: '十二炁 · 邃玄', description: '玄黄邃深之炁，感应道统变幻克制之法；魔咒祸乱心神，致法力暴动灵器失效。' },
+  '紫炁': { glyph: '紫', color: '#a18aa7', tone: 'moon', tierLabel: '十二炁 · 紫都', description: '清都紫微之象，经声大作打断施法缴械灵器；展开紫炁领域庇护四尊威仪炁神。' },
+  '真炁': { glyph: '真', color: '#c1bca7', tone: 'silver', tierLabel: '十二炁 · 真阳', description: '抱石眠真，生机绵长肌骨还真；破虚妄通人心，随修士寿数增长愈显威能。' },
+  '寒炁': { glyph: '寒', color: '#acc7cf', tone: 'water', tierLabel: '十二炁 · 寒霜', description: '清苦松香自带寒气，恶念乍起立时清听警醒；踏雪驭寒朔风加持，寿数绵延。' },
+  '晞炁': { glyph: '晞', color: '#d5a875', tone: 'gold', tierLabel: '十二炁 · 晞光', description: '明阳之闰，渡阴代夜；收束光火转为遁速，议八辟结党使帝刑不加法身虚化。' },
+  '瑞炁': { glyph: '瑞', color: '#d2bd82', tone: 'gold', tierLabel: '十二炁 · 祥瑞', description: '祥瑞天光之象，测算运势生死大劫；断善恶、知好歹、明祸福，吉凶洞若观火。' },
+  '煞炁': { glyph: '煞', color: '#786f7a', tone: 'moon', tierLabel: '十二炁 · 煞幽', description: '无尽煞峰拔地而起，遍天煞海翻涌加持法身；身化滚滚黑煞聚散无形阻挡金德。' },
+  '谪炁': { glyph: '谪', color: '#888891', tone: 'moon', tierLabel: '十二炁 · 寂灭', description: '不显世幽冥之炁，杳暝沉暗；薄虞渊深，藏壑之舟渡转生死。' },
+  '华炁': { glyph: '华', color: '#cba57f', tone: 'gold', tierLabel: '十二炁 · 韶光', description: '不显世显化韶华，钟鼓齐鸣诸侯列位抵御偏转攻击；淡金光色瞬息互换身形位移。' },
+
+  // 三雷
+  '玄雷': { glyph: '玄', color: '#ada8c6', tone: 'moon', tierLabel: '三雷 · 阳雷威霆', description: '浩荡乌云降银白玄雷护体，距离愈近威能愈烈；掌中雷暴索敌眉心，破阵摧坚。' },
+  '霄雷': { glyph: '霄', color: '#969ab3', tone: 'moon', tierLabel: '三雷 · 阴雷云泽', description: '气海如化雷池储蓄玄雷，紫银两气升腾流转；设坛降雷化雷为液，克制飓鬼阴风。' },
+  '元雷': { glyph: '磁', color: '#aab4ae', tone: 'mist', tierLabel: '三雷 · 元磁神枢', description: '铸在魔煞之中化出元磁真光；执掌煞仪，紫府突破最合此道。' },
+
+  // 并古
+  '鸺葵': { glyph: '鸺', color: '#8d8790', tone: 'moon', tierLabel: '三巫 · 幽风鬼影', description: '枭鸺鬼魅之象，留运转法力之分身遁匿无踪；御风极速，擅炼鬼尸喜暗忌阳。' },
+  '上巫': { glyph: '巫', color: '#9e826f', tone: 'earth', tierLabel: '三巫 · 鬼神大傩', description: '上古巫傩神道，视物通透；深红法光压制法躯消磨，匿气绝算博名则损。' },
+  '玉真': { glyph: '玉', color: '#a5bbb1', tone: 'jade', tierLabel: '三巫 · 琼华真幻', description: '素德钟爱之所，洁白宝衣身体玉化；青玉危崖绝路难逃，白锦漫天掩人耳目。' },
+  '衡祝': { glyph: '祝', color: '#c99a68', tone: 'gold', tierLabel: '二祝 · 赤虎神祀', description: '神道敕祝与赤殿玄虎之象；目射血光穿破重围，血火幽域定身重伤遮蔽玄机。' },
+  '全丹': { glyph: '丹', color: '#b48c77', tone: 'ember', tierLabel: '并古 · 铅汞万象', description: '铅汞孕育用器之德，一念仿造灵器神妙；神尸脱胎避死延生，强夺万派丹器妙用。' },
+  '执孛': { glyph: '孛', color: '#9d9a88', tone: 'earth', tierLabel: '并古 · 执阴渡阳', description: '主阴阳交分动荡天下，化独立行走幻身；借王威以破阵斩敌，分割太虚断绝气息。' },
+  '司天': { glyph: '天', color: '#aab2be', tone: 'silver', tierLabel: '并古 · 璇玑星曜', description: '度算天象玄序，听闻百里异动；丹田炼就天司雷邸，牵动修士愈众则星图神妙愈炽。' },
+  '都卫': { glyph: '卫', color: '#a89979', tone: 'earth', tierLabel: '并古 · 悬山溯流', description: '神道戍卫灵山异水，吐沉重白气化悬空巨山镇压封锁太虚；紫鱼人面漫天化水。' },
+
+  // 独立
+  '虹霞': { glyph: '霞', color: '#cc8c81', tone: 'ember', tierLabel: '独立 · 朝采落霞', description: '朝霞采露，遁光疾迅施法如风；聚虹雾迷乱敌手，霞光护体孕育山川灵机。' },
+  '长庚': { glyph: '剑', color: '#c3cbd0', tone: 'silver', tierLabel: '独立 · 剑意通玄', description: '采一百二十八道剑气、一十六道剑意自成一家；容纳磅礴剑意为神通斩落万法。' },
+};
+
+// 分类体系转换：将「道统-神通.json」深度融合为项目运行时结构
+const groupMeta = {
+  '阴阳': {
+    kicker: '三阴 · 三阳',
+    title: '阴阳六道',
+    shortLabel: '阴阳',
+    index: '01',
+    description: '三阴三阳，日月相照；阴阳权柄各循其序，进退求金各有天数。',
+    color: '#d2bc86',
+  },
+  '五德': {
+    kicker: '金 · 木 · 水 · 火 · 土',
+    title: '五德五行',
+    shortLabel: '五德',
+    index: '02',
+    description: '金木水火土，各有正藏蕴变收诸现；青宣由初伏仙君空证并古。',
+    color: '#c4a56d',
+  },
+  '十二炁': {
+    kicker: '显世八炁 · 隐世二炁',
+    title: '十二炁脉',
+    shortLabel: '十二炁',
+    index: '03',
+    description: '起于清炁，散作万千灵机；显世与隐世诸炁互为阴阳表里。',
+    color: '#96afae',
+  },
+  '三雷': {
+    kicker: '玄雷 · 霄雷 · 元雷',
+    title: '三雷法脉',
+    shortLabel: '三雷',
+    index: '04',
+    description: '玄霄主雷霆阴阳，元雷掌元磁神枢；策电降法，紫府威凛。',
+    color: '#a8a9bd',
+  },
+  '并古': {
+    kicker: '三巫 · 二祝 · 神道丹家',
+    title: '并古诸脉',
+    shortLabel: '并古',
+    index: '05',
+    description: '包容上古巫祝、神道宿卫、铅汞全丹与执孛司天，各承古脉秘传。',
+    color: '#aa9a86',
+  },
+  '独立': {
+    kicker: '虹霞 · 长庚剑意',
+    title: '独立法脉',
+    shortLabel: '独立',
+    index: '06',
+    description: '独立天地之外，以霞为遁、以剑为道；自成宗祖，不拘五行阴阳。',
+    color: '#c0a18b',
+  },
+};
+
+// 构造道统体系数据
+export const daoGroups = rawData['观道'].map((guanDao) => {
+  const meta = groupMeta[guanDao['名称']] ?? {
+    kicker: '道统秘录',
+    title: guanDao['名称'],
+    shortLabel: guanDao['名称'],
+    index: '00',
+    description: '',
+    color: '#a9c8b5',
+  };
+
+  const daoItems = [];
+  let daoIndex = 1;
+
+  for (const subGroup of guanDao['下级道统分类']) {
+    for (const dao of subGroup['道统']) {
+      // 避免并古二祝下空青宣重复覆盖五德青宣
+      if (guanDao['名称'] === '并古' && dao['名称'] === '青宣' && (!dao['神通'] || dao['神通'].length === 0)) {
+        continue;
+      }
+
+      const daoName = dao['名称'];
+      const customMeta = daoMetaConfig[daoName] ?? {
+        glyph: daoName.slice(0, 1),
+        color: '#a9c8b5',
+        tone: 'jade',
+        tierLabel: `${guanDao['名称']} · ${subGroup['名称']}`,
+        description: '道统意象与权柄随修士、果位与时代而变，具体以典籍考据为准。',
+      };
+
+      const spells = (dao['神通'] || []).map((s) => ({
+        name: s['名称'],
+        alias: s['下位古称别称替参'] || '',
+        category: s['神通类别'] || [],
+        gongfa: s['功法'] || [],
+        cultivation: s['修炼词条'] || [],
+        combat: s['斗法词条'] || [],
+        auxiliary: s['辅助词条'] || [],
+        description: s['具体介绍'] || '',
+        gongfaExtra: s['功法补充'] || [],
+      }));
+
+      daoItems.push({
+        id: daoName,
+        code: String(daoIndex).padStart(2, '0'),
+        group: guanDao['名称'],
+        groupLabel: guanDao['名称'],
+        subGroup: subGroup['名称'],
+        groupTitle: meta.title,
+        name: daoName,
+        spells,
+        description: customMeta.description,
+        glyph: customMeta.glyph,
+        color: customMeta.color,
+        tone: customMeta.tone,
+        tierLabel: customMeta.tierLabel,
+        subtitle: `${guanDao['名称']} · ${subGroup['名称']}`,
+      });
+
+      daoIndex += 1;
+    }
+  }
+
+  return {
+    id: guanDao['名称'],
+    label: guanDao['名称'],
+    kicker: meta.kicker,
+    title: meta.title,
+    shortLabel: meta.shortLabel,
+    index: meta.index,
+    description: meta.description,
+    color: meta.color,
+    items: daoItems,
+  };
 });
 
-const definitions = [
-  {
-    id: '阴阳', label: '阴阳', kicker: '三阴 · 三阳', title: '阴阳六道', shortLabel: '阴阳', index: '01',
-    description: '三阴三阳，日月相照；阴阳权柄各循其序。', color: '#d2bc86',
-    items: [
-      ['太阳', ['分阳钗', '郁仪文'], '日间第一显，诸阳景从。日月交替之际，诸阳道统皆有所应。', '日', '#d9ae60', 'gold', '三阳'],
-      ['少阳', ['奉东君', '目骋怀', '邪绝求', '相诀观', '赤断镞'], '阳中生阴，阴消阳长；常被归入三阳之一，具体权柄随道论而异。', '曦', '#c8b56e', 'gold', '三阳'],
-      ['明阳', ['天下明', '谒天门', '帝观元', '君蹈危', '赤断镞'], '日间第二显，兼具光明、生发与帝君之象；与厥阴相制。', '明', '#d5a558', 'gold', '三阳'],
-      ['太阴', ['结璘章', '仪对影', '湖月秋', '诣太素', '夜光府', '惊鹊乡', '不胜寒'], '诸阴所宗，月与道藏之象；潜藏、避劫、资道的意象尤著。', '月', '#d5d9d0', 'moon', '三阴'],
-      ['少阴', ['太冲观', '香俱沉', '调杼柚'], '三阴之一，常见意象有寒煞、香灰与浮冰；与太阴、寒炁等有位别关联。', '霜', '#a9b9c4', 'moon', '三阴'],
-      ['厥阴', ['不紫衣', '不二舆', '利异臣'], '三阴之一，意象幽隐而繁衍；与明阳相制，与坎水相亲。', '幽', '#a8a0ad', 'moon', '三阴'],
-    ],
-  },
-  {
-    id: '五德', label: '五德', kicker: '金 · 木 · 水 · 火 · 土', title: '五德五行', shortLabel: '五德', index: '02',
-    description: '金木水火土，各有正藏蕴变收诸现；青宣另有并古之辨。', color: '#c4a56d',
-    items: [
-      ['兑金', ['金窍心', '位从孚', '君兑隅', '杀收宫', '不穷锋'], '申酉金之正位，取金铁、秋露、折毁与变革之象。', '兑', '#c8bba0', 'silver', '金德 · 正位'],
-      ['逍金', ['望商锋', '逍遥游', '不穷锋'], '逍遥藏养之金，柔和而蕴容；常见意象为暗金、金匮与矿壤。', '匮', '#c1a876', 'gold', '金德 · 蕴位'],
-      ['齐金', ['天齐满'], '收蓄之金，收归保养；传承整理中常与库金并论。', '齐', '#c3bd9c', 'silver', '金德 · 收位'],
-      ['库金', ['帑梁银', '金销洞'], '潜藏受纳之金，常与秘藏、矿脉、凭证及阵法资粮相关。', '库', '#b4bdb7', 'silver', '金德 · 藏位'],
-      ['庚金', ['今去故', '再折毁', '镂金石', '天金冑', '墓门棘'], '锋锐、肃杀、变化之金；为兑金转换与嬗变的重要桥梁。', '庚', '#d0ad77', 'gold', '金德 · 变位'],
-      ['正木', ['木成方', '位从专', '见查语', '背南行'], '甲乙木之正位，意象偏向巽风、栋梁与密藏不坏。', '巽', '#8eaa83', 'jade', '木德 · 正位'],
-      ['保木', ['神在隰'], '藏养、滋养与丰收之木；条目所载果位受隔乡所锁。', '隰', '#829e73', 'jade', '木德 · 藏位'],
-      ['集木', ['妄诞林', '祸延生', '隼就栖', '诸蓼会', '凌云木', '余养性'], '群木相依、众修云集之象；常见权柄整理包括生机、自愈与兼容并蓄。', '林', '#849b6c', 'jade', '木德 · 收位'],
-      ['角木', ['余养性', '潇重林', '黎运春', '乙木全'], '春木生发，在天为风、落地为枝；常见意象为松、桑梓与枝芽。', '角', '#91a982', 'jade', '木德 · 藏位'],
-      ['更木', ['病前春'], '木德变位之一，旧称或替参见索引作“天下易”；条目较少，留待正文补考。', '更', '#91a080', 'jade', '木德 · 变位'],
-      ['坎水', ['溪上翁', '入坎窞', '浩瀚海', '长云暗', '恨江去', '位从险'], '水德正位，溪流、山峡、阴云与浩瀚洪流并见；六神通具载。', '坎', '#75a9b3', 'water', '水德 · 正位'],
-      ['府水', ['朝寒雨', '合黎渊', '宿穷冬', '广浚湖'], '湖泽承纳、兴泽蓄容之水；浩瀚之能失落后，仍有余韵流传。', '府', '#7398a2', 'water', '水德 · 蕴位'],
-      ['合水', ['归流处', '谶在兹', '广准圣', '诸合还', '妖渎河'], '百川归处、水脉聚合之道；常见意象为深蓝海潮与鳞兽。', '合', '#528d9f', 'water', '水德 · 收位'],
-      ['牝水', ['佞无晨', '往生泉', '谿谷会', '参玄臟'], '谷水、云水与蕴养未发之水；整理资料记为擅疗愈、护身与藏纳。', '牝', '#78949a', 'water', '水德 · 藏位'],
-      ['渌水', ['如重浊', '洞泉声', '清夕雨', '丑癸藏', '洗劫露'], '清浊沉浮、夕雨洞泉之水；变位、遁变与符箓是其常见意象。', '渌', '#7cae9c', 'jade', '水德 · 变位'],
-      ['离火', ['顺平征', '位从罗', '大离书', '九重擭', '折焚尽', '雉离行'], '火德正位，光热与重罗之象；常见描述有焚金煮海、吞角济坎。', '离', '#d07b59', 'ember', '火德 · 正位'],
-      ['真火', ['雉离行', '天兜火', '治命神'], '先天治命之火，常见整理认为其最善炼化法器。', '真', '#e18d52', 'ember', '火德 · 正位'],
-      ['并火', ['乌从欲', '心期焚', '兼险夺', '至命除', '焰中乌'], '黑焰、病痛与焚命之象；并火神通名目见索引汇总。', '乌', '#a85c4c', 'ember', '火德 · 收位'],
-      ['牡火', ['牡煞火', '韬无灾', '高陵父', '受灴龠'], '受藏之火，常与玄丹、疗病、炼化及法躯意象相连。', '牡', '#c27957', 'ember', '火德 · 藏位'],
-      ['灴火', ['燔旧室', '白樆心', '布燥使', '秉灴夏'], '升腾而流变之火；条目整理强调肃正木气、化寒为热。', '灴', '#da7652', 'ember', '火德 · 变位'],
-      ['艮土', ['愚赶山', '正源谷'], '土德正位，执正、护佑、搬移与勘测地脉。', '艮', '#b19c72', 'earth', '土德 · 正位'],
-      ['戊土', ['受抚顶', '仙无漏', '戊心岩'], '中央蕴养之土，山霞、云雾与司命之象；古时与人皇传承相关。', '戊', '#ae916a', 'earth', '土德 · 正位'],
-      ['归土', ['狡落原', '庥命簋', '有常主', '养役母'], '社稷民生、归心与养鬼之土；常与宣土合称社稷二土。', '归', '#9d8b68', 'earth', '土德 · 收位'],
-      ['宝土', ['高垒燕', '藏纳宫', '膏泽治', '梭摩岭'], '藏纳、滋养、生息之土；沃土与地脉是常见意象。', '宝', '#a59473', 'earth', '土德 · 藏位'],
-      ['宣土', ['朝社参', '神用命', '训浚明', '愚赶山'], '帝宣中土之道，关联社稷、神祇与煞磁分离。', '宣', '#b39a68', 'earth', '土德 · 变位'],
-      ['青宣', ['伏青山', '青宣岳', '玄羊子', '上岩神', '观地冥'], '初伏仙君借宣土空证而出的道统；既被视作第六土，也常列入并古。', '青', '#7da18b', 'jade', '土德 / 并古 · 特例'],
-    ],
-  },
-  {
-    id: '十二炁', label: '十二炁', kicker: '清炁为始 · 诸炁纷呈', title: '十二炁脉', shortLabel: '十二炁', index: '03',
-    description: '十二炁起于清炁；诸炁本源之说为重要道论之一。', color: '#96afae',
-    items: [
-      ['清炁', ['清元风', '益清气', '浮云身', '炁临宇', '空应散'], '十二炁之始，灵窍、云雾与诸灵根基的意象尤著；也有清炁高于阴阳的观点。', '清', '#bfd6ce', 'mist', '十二炁 · 本始'],
-      ['邃炁', ['代行妨', '劫烬谈', '秩梁成', '闇天殃', '阏鸿沟'], '十二炁中偏向灾劫、阻道与变化制敌的一脉；与清炁有闰位记述。', '邃', '#857d8c', 'moon', '十二炁'],
-      ['紫炁', ['绕东山', '列紫篇', '道始兆', '坤辰修', '养生主'], '紫气东来、清都紫微之象；常见整理中被称天修紫炁仙元性。', '紫', '#a18aa7', 'moon', '十二炁'],
-      ['真炁', ['抱石眠', '危得属', '霞羽客', '鹤挂衣', '授长生'], '天武真炁神煞性，统御艰险、水火均平与奉武修真等描述并见。', '真', '#c1bca7', 'silver', '十二炁'],
-      ['寒炁', ['入清听', '松上雪', '祢水寒', '沆砀满', '青霄女'], '三阴生寒、号为佐使；意象见冰雪、松香与清听。', '寒', '#acc7cf', 'water', '十二炁'],
-      ['晞炁', ['未阕华', '乞代夜', '郁燠苦', '庆垂轩', '议八辟'], '日升、渡阴代夜之象；部分神通存在别称或替参。', '晞', '#d5a875', 'gold', '十二炁'],
-      ['瑞炁', ['好功箓', '瑞气云'], '瑞光、祥云与福祸安危感应之炁。', '瑞', '#d2bd82', 'gold', '十二炁'],
-      ['煞炁', ['不空劫', '罗剎海', '箝恨口', '千百身'], '魔气、煞雨与法躯变化的意象；对神通归属有替参记录。', '煞', '#786f7a', 'moon', '十二炁'],
-      ['谪炁', ['藏壑舟', '薄虞渊'], '杳暝沉暗、生死寂灭、拘束转世与幽冥之炁。', '谪', '#888891', 'moon', '十二炁'],
-      ['华炁', ['冠灵旒', '十方界'], '华光、五彩宝光、香火与众生之念的意象。', '华', '#cba57f', 'gold', '十二炁'],
-      ['上仪', ['明心筵', '致缉熙', '射狩王'], '清云、礼仪与超凡玄业之象；道论中常与下仪相对。', '仪', '#c8c8b4', 'silver', '十二炁'],
-      ['下仪', [], '与上仪相对；现有汇总暂未列明确神通条目。', '仪', '#999b92', 'silver', '十二炁 · 待考'],
-    ],
-  },
-  {
-    id: '三雷', label: '三雷', kicker: '玄雷 · 霄雷 · 元雷', title: '三雷法脉', shortLabel: '三雷', index: '04',
-    description: '三雷各呈阴阳与元磁之象；与阴阳二雷对应的解释常见于整理。', color: '#a8a9bd',
-    items: [
-      ['玄雷', ['靖平敕', '至阳嘘', '神宫誓', '律演威', '伐封坛'], '与霄雷相对常被称阳雷；策雷霆、敕天罚与破邪是常见意象。', '玄', '#ada8c6', 'moon', '三雷'],
-      ['霄雷', ['冬雷声', '春惊蛰', '轻雷落', '斡动紫'], '与玄雷相对常被称阴雷；另有“玄雷泊”作为替参记录。', '霄', '#969ab3', 'moon', '三雷'],
-      ['元雷', ['主煞仪', '脱煞胎'], '元磁之雷，柔而不烈、变化不定；具体权柄在公开整理中相对较少。', '磁', '#aab4ae', 'mist', '三雷'],
-    ],
-  },
-  {
-    id: '并古', label: '并古', kicker: '三巫 · 二祝 · 诸道', title: '并古诸脉', shortLabel: '并古', index: '05',
-    description: '并古为包容性分类，诸道之间关联并不尽相同。', color: '#aa9a86',
-    items: [
-      ['并鸺', ['枭逐狸', '飓鬼阴'], '枭鸺、鬼魂、黑羽与复仇的意象；通常列入三巫。', '鸺', '#8d8790', 'moon', '三巫'],
-      ['上巫', ['槐荫鬼', '应帝王', '饮民血', '勿查我', '地巫祝', '薄虞渊', '藏壑舟'], '巫箓、血祭与鬼神之道；事无形，掌魂魄与变化。', '巫', '#9e826f', 'earth', '三巫'],
-      ['玉真', ['玉中人', '青玉崖', '道合真', '间道锦', '白玉盘'], '虚实真幻与玉道变化之象；常列三巫之一。', '玉', '#a5bbb1', 'jade', '三巫'],
-      ['衡祝', ['殿阳虎', '斛量灾', '满垠㷐'], '祝术、火术与神道敕封之象；常与全丹亲近。', '祝', '#c99a68', 'gold', '二祝'],
-      ['全丹', ['浥铅华', '制餋宜', '候神殊', '金书序'], '铅汞、丹器与物性变化；整理资料常将其与三巫二祝并论。', '丹', '#b48c77', 'ember', '并古'],
-      ['执孛', ['形渡阡', '相离绝', '僭劻勷'], '行悖、变革与阴阳交界的意象；亦有“修越”之称。', '孛', '#9d9a88', 'earth', '并古'],
-      ['司天', ['听醒辰', '神布序', '斗衡玄', '推曼衍', '监神律'], '丹祀天地、衍变神通、度算玄序与监察八方。', '天', '#aab2be', 'silver', '并古'],
-      ['都卫', ['降魂闻', '东羽山', '西天塬', '南惆水', '北漠庭'], '点灵治山、戍水驱鬼、策邪敕封的神道之象。', '卫', '#a89979', 'earth', '并古'],
-      ['身夔', [], '夔兽、雷音与法躯强度的意象；现有整理暂未列明确神通条目。', '夔', '#a49d8f', 'silver', '并古 · 待考'],
-    ],
-  },
-  {
-    id: '独立', label: '独立道统', kicker: '虹霞 · 长庚', title: '独立与其他', shortLabel: '独立', index: '06',
-    description: '在整理索引中独立列示，不归入阴阳、五德、十二炁、三雷及并古。', color: '#c0a18b',
-    items: [
-      ['虹霞', ['长霞雾', '晚据川'], '朝霞、晚霞与彩光之道；擅遁、幻化与掠夺法器。', '霞', '#cc8c81', 'ember', '独立'],
-      ['长庚', ['养青冥', '意堪身'], '剑芒、剑气與剑意的道统；剑意可斩神通，是极特殊的霸道神妙。', '剑', '#c3cbd0', 'silver', '独立'],
-    ],
-  },
-];
-
-export const daoGroups = definitions.map((group) => ({
-  ...group,
-  items: group.items.map(([name, spells, description, glyph, color, tone, tierLabel], index) => makeDao(
-    group.id,
-    group.label,
-    group.title,
-    index + 1,
-    name,
-    spells,
-    { description, glyph, color, tone, tierLabel },
-  )),
-}));
 export const allDao = daoGroups.flatMap((group) => group.items);
+
+// 提取全量所有独立神通索引（包含归属道统与所有词条，供全局搜索与筛选）
+export const allSpells = allDao.flatMap((dao) =>
+  dao.spells.map((s) => ({
+    ...s,
+    daoName: dao.name,
+    daoGroup: dao.group,
+    daoSubGroup: dao.subGroup,
+    daoColor: dao.color,
+    daoTone: dao.tone,
+  }))
+);
+
+// 统计数据
+export const stats = {
+  totalDaos: allDao.length,
+  totalSpells: allSpells.length,
+  totalGongfa: allSpells.reduce((acc, s) => acc + s.gongfa.length + s.gongfaExtra.length, 0),
+};
 
 export const theoryPairs = [
   ['清炁', '谪炁', '始 · 末'],
@@ -131,5 +233,5 @@ export const theoryPairs = [
   ['紫炁', '真炁', '紫阴 · 真阳'],
   ['华炁', '邃炁', '荣 · 枯'],
   ['瑞炁', '煞炁', '福 · 祸'],
-  ['上仪', '下仪', '秩序 · 混沌'],
+  ['太阳', '太阴', '日 · 月'],
 ];
