@@ -123,17 +123,16 @@ function App() {
         </div>
 
         <aside className="detail-panel" aria-live="polite">
-          <div className="detail-topline"><span>道统档案</span><span className="detail-index">XJ—{selected?.code ?? '01'}</span></div>
+          <div className="detail-topline"><span>道统档案</span><span className="detail-index">{selected?.tierLabel}</span></div>
           <div className="detail-emblem" style={{ '--tone': selected?.color }}>
-            <span className="emblem-orbit emblem-orbit-one" /><span className="emblem-orbit emblem-orbit-two" />
-            <span className="emblem-glyph">{selected?.glyph}</span><span className="emblem-star">✳</span>
+            <span className="emblem-glyph">{selected?.glyph}</span>
           </div>
           <div className="detail-title-row"><div><span className="detail-category">{selected?.groupLabel} · {selected?.tierLabel}</span><h2>{selected?.name}</h2></div><button className="bookmark-button" onClick={() => setShowSources(true)} aria-label="资料来源"><BookOpen size={17} /></button></div>
           <p className="detail-description">{selected?.description}</p>
-          <div className="detail-divider"><span>所载神通</span><span>{String(selected?.spells.length ?? 0).padStart(2, '0')} RECORDS</span></div>
+          <div className="detail-divider"><span>所载神通</span><span>{selected?.spells.length ? `${selected.spells.length} 道` : '待考'}</span></div>
           {selected?.spells.length ? (
             <div className="spell-list">
-              {selected.spells.map((spell, index) => <button key={spell.name} className={`spell-row ${activeSpell === spell.name ? 'spell-selected' : ''}`} aria-pressed={activeSpell === spell.name} onClick={() => chooseSpell(spell.name)}><span className="spell-number">{String(index + 1).padStart(2, '0')}</span><span className="spell-name">〖{spell.name}〗</span>{spell.alias && <span className="spell-alias">又名 {spell.alias}</span>}<ArrowUpRight size={13} className="spell-arrow" /></button>)}
+              {selected.spells.map((spell) => <button key={spell.name} className={`spell-row ${activeSpell === spell.name ? 'spell-selected' : ''}`} aria-pressed={activeSpell === spell.name} onClick={() => chooseSpell(spell.name)}><i className="spell-cinnabar" aria-hidden="true" /><span className="spell-name">{spell.name}</span>{spell.alias && <span className="spell-alias">又名 {spell.alias}</span>}</button>)}
             </div>
           ) : <div className="no-spells">暂未见明确神通条目<br /><small>并非无道，或为秘而不宣</small></div>}
           {activeSpell && <div className="spell-note"><Sparkles size={13} /><span>「{activeSpell}」已载入观想。神通详情待原文考据补全。</span></div>}

@@ -29,10 +29,10 @@ function makeGlyphTexture(glyph, color) {
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   context.shadowColor = color;
-  context.shadowBlur = 32;
+  context.shadowBlur = 12;
   context.fillStyle = color;
   context.font = '166px "Ma Shan Zheng", "Songti SC", serif';
-  context.fillText(glyph, 128, 133);
+  context.fillText(glyph, 128, 136);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
@@ -67,15 +67,17 @@ function disposeTree(root) {
 function daoPositions(count) {
   return Array.from({ length: count }, (_, index) => {
     const crowded = count > 16;
-    const outerCount = crowded ? Math.ceil(count * .61) : count;
+    const outerCount = crowded ? Math.ceil(count * .62) : count;
     const outer = index < outerCount;
     const localIndex = outer ? index : index - outerCount;
     const ringCount = outer ? outerCount : count - outerCount;
-    const angle = (localIndex / ringCount) * TAU - Math.PI / 2 + (outer ? 0 : .17);
+    const angle = (localIndex / ringCount) * TAU - Math.PI / 2 + (outer ? 0 : Math.PI / ringCount);
+    const radiusX = outer ? (crowded ? 4.05 : 3.73) : 3.15;
+    const radiusY = outer ? (crowded ? 2.86 : 2.64) : 2.48;
     return new THREE.Vector3(
-      Math.cos(angle) * (outer ? 3.73 : 2.72),
-      Math.sin(angle) * (outer ? 2.64 : 2.07),
-      -.48 + Math.sin(angle * 2 + index * .8) * .48 - (outer ? .12 : .38),
+      Math.cos(angle) * radiusX,
+      Math.sin(angle) * radiusY,
+      -.32 + Math.sin(angle * 2 + index) * .2 - (outer ? 0 : .12),
     );
   });
 }
@@ -83,100 +85,64 @@ function daoPositions(count) {
 function spellPositions(count) {
   return Array.from({ length: count }, (_, index) => {
     const angle = (index / count) * TAU - (count === 2 ? Math.PI : Math.PI / 2);
-    return new THREE.Vector3(Math.cos(angle) * 1.72, Math.sin(angle) * 1.56, .75 + Math.sin(index * 2.7) * .12);
+    return new THREE.Vector3(Math.cos(angle) * 1.72, Math.sin(angle) * 1.52, .75 + Math.sin(index * 2.7) * .12);
   });
 }
 
 function makeHeart(glowTexture) {
   const heart = new THREE.Group();
-  const aura = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: '#6dbaa4', transparent: true, opacity: .22, blending: THREE.AdditiveBlending, depthWrite: false }));
-  aura.scale.set(5, 5, 1);
-  aura.position.z = -.55;
+  const aura = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: '#9c3b32', transparent: true, opacity: .16, blending: THREE.AdditiveBlending, depthWrite: false }));
+  aura.scale.set(3.4, 3.4, 1);
+  aura.position.z = -.4;
   heart.add(aura);
 
-  const back = new THREE.Mesh(new THREE.CylinderGeometry(1.03, 1.03, .14, 96), new THREE.MeshPhysicalMaterial({ color: '#132b2b', metalness: .77, roughness: .24, clearcoat: 1, clearcoatRoughness: .13, side: THREE.DoubleSide }));
-  back.rotation.x = Math.PI / 2;
-  heart.add(back);
-  const face = new THREE.Mesh(new THREE.CircleGeometry(.94, 96), new THREE.MeshBasicMaterial({ color: '#07191a' }));
-  face.position.z = .079;
+  const face = new THREE.Mesh(new THREE.CircleGeometry(.96, 96), new THREE.MeshBasicMaterial({ color: '#071614' }));
+  face.position.z = .06;
   heart.add(face);
-  const faceWash = new THREE.Mesh(new THREE.CircleGeometry(.91, 96), new THREE.MeshBasicMaterial({ color: '#31676a', transparent: true, opacity: .16, depthWrite: false }));
-  faceWash.position.z = .084;
+  const faceWash = new THREE.Mesh(new THREE.CircleGeometry(.9, 96), new THREE.MeshBasicMaterial({ color: '#9c3b32', transparent: true, opacity: .07, depthWrite: false }));
+  faceWash.position.z = .07;
   heart.add(faceWash);
 
-  [1.04, .91, .72].forEach((radius, index) => {
-    const border = ring(radius, index === 1 ? '#9dc9be' : '#ccb17a', index === 0 ? .8 : .26, index === 0 ? .014 : .006);
-    border.position.z = .11;
-    heart.add(border);
-  });
-  const ticks = new THREE.Group();
-  for (let index = 0; index < 48; index += 1) {
-    const angle = index / 48 * TAU;
-    const start = index % 4 === 0 ? 1.09 : 1.08;
-    const end = index % 4 === 0 ? 1.21 : 1.13;
-    ticks.add(line([
-      new THREE.Vector3(Math.cos(angle) * start, Math.sin(angle) * start, .08),
-      new THREE.Vector3(Math.cos(angle) * end, Math.sin(angle) * end, .08),
-    ], '#bdab82', index % 4 === 0 ? .58 : .25));
-  }
-  heart.add(ticks);
+  const outer = ring(1.02, '#c6b48a', .72, .01);
+  outer.position.z = .1;
+  const inner = ring(.74, '#9c3b32', .55, .006);
+  inner.position.z = .11;
+  heart.add(outer, inner);
 
-  const orbitA = ring(1.36, '#c6a973', .51, .012);
-  orbitA.rotation.set(.47, .15, -.42);
-  const orbitB = ring(1.23, '#79b9bd', .46, .009);
-  orbitB.rotation.set(-.51, .46, .36);
+  const orbitA = ring(1.28, '#c6b48a', .22, .005);
+  orbitA.rotation.set(.62, .08, 0);
+  const orbitB = ring(1.16, '#6f8f86', .16, .004);
+  orbitB.rotation.set(-.48, .2, .2);
   heart.add(orbitA, orbitB);
 
-  const fragments = new THREE.Group();
-  for (let index = 0; index < 9; index += 1) {
-    const angle = index / 9 * TAU;
-    const crystal = new THREE.Mesh(
-      new THREE.OctahedronGeometry(index % 3 === 0 ? .077 : .047),
-      new THREE.MeshBasicMaterial({ color: index % 2 ? '#96c5bc' : '#dec18a', transparent: true, opacity: .82 }),
-    );
-    crystal.position.set(Math.cos(angle) * 1.34, Math.sin(angle) * 1.34, .22 + Math.sin(angle * 2) * .18);
-    crystal.rotation.z = angle;
-    fragments.add(crystal);
-  }
-  heart.add(fragments);
-  heart.userData = { aura, faceWash, orbitA, orbitB, fragments, sharedGlow: glowTexture };
+  heart.userData = { aura, faceWash, orbitA, orbitB, sharedGlow: glowTexture };
   return heart;
 }
 
-function makeAspect(tone, color, glowTexture) {
+function makeAspect(tone, color) {
   const group = new THREE.Group();
-  group.userData.sharedGlow = glowTexture;
   if (tone === 'water' || tone === 'mist' || tone === 'moon') {
-    for (let strand = 0; strand < 3; strand += 1) {
-      const points = [];
-      for (let step = 0; step <= 90; step += 1) {
-        const angle = step / 90 * TAU;
-        const radius = 1.45 + strand * .1 + Math.sin(angle * (tone === 'water' ? 4 : 2) + strand * 2) * .065;
-        points.push(new THREE.Vector3(Math.cos(angle) * radius, Math.sin(angle) * radius * (tone === 'moon' ? .86 : 1), -.08 + Math.sin(angle * 3 + strand) * .13));
-      }
-      group.add(line(points, color, strand === 0 ? .56 : .27));
+    const points = [];
+    for (let step = 0; step <= 80; step += 1) {
+      const angle = step / 80 * TAU;
+      const radius = 1.18 + Math.sin(angle * (tone === 'water' ? 3 : 2)) * .04;
+      points.push(new THREE.Vector3(Math.cos(angle) * radius, Math.sin(angle) * radius * (tone === 'moon' ? .9 : 1), -.04));
     }
+    group.add(line(points, color, .32));
   } else {
-    for (let index = 0; index < 11; index += 1) {
-      const angle = index / 11 * TAU;
+    for (let index = 0; index < 7; index += 1) {
+      const angle = index / 7 * TAU;
       const isFlame = tone === 'ember';
       const isLeaf = tone === 'jade';
       const crystal = new THREE.Mesh(
-        isFlame ? new THREE.ConeGeometry(.07, .31 + index % 3 * .08, 4) : new THREE.OctahedronGeometry(isLeaf ? .1 : .085),
-        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: index % 2 ? .61 : .82, side: THREE.DoubleSide }),
+        isFlame ? new THREE.ConeGeometry(.05, .22, 4) : new THREE.OctahedronGeometry(.06),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .55, side: THREE.DoubleSide }),
       );
-      if (!isFlame) crystal.scale.set(isLeaf ? .65 : .48, isLeaf ? 2.15 : 1.95, .4);
-      crystal.rotation.z = angle - Math.PI / 2 + (isLeaf ? .4 : 0);
-      crystal.position.set(Math.cos(angle) * (1.41 + index % 2 * .15), Math.sin(angle) * (1.41 + index % 2 * .15), -.1 + index % 3 * .08);
+      if (!isFlame) crystal.scale.set(isLeaf ? .6 : .45, isLeaf ? 1.8 : 1.6, .35);
+      crystal.rotation.z = angle - Math.PI / 2;
+      crystal.position.set(Math.cos(angle) * 1.16, Math.sin(angle) * 1.16, -.06);
       group.add(crystal);
     }
-  }
-  for (let index = 0; index < 13; index += 1) {
-    const angle = index / 13 * TAU;
-    const spark = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color, transparent: true, opacity: index % 3 ? .35 : .65, blending: THREE.AdditiveBlending, depthWrite: false }));
-    spark.scale.setScalar(index % 3 ? .19 : .31);
-    spark.position.set(Math.cos(angle) * (1.53 + index % 3 * .1), Math.sin(angle) * (1.53 + index % 3 * .1), .08);
-    group.add(spark);
   }
   return group;
 }
@@ -184,33 +150,52 @@ function makeAspect(tone, color, glowTexture) {
 function makeDaoNode(dao, position, glowTexture) {
   const group = new THREE.Group();
   const tone = new THREE.Color(palette[dao.tone] ?? dao.color);
-  const bloom = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: tone, transparent: true, opacity: .48, blending: THREE.AdditiveBlending, depthWrite: false }));
-  bloom.scale.set(1.12, 1.12, 1);
-  const stone = new THREE.Mesh(new THREE.IcosahedronGeometry(.145, 1), new THREE.MeshPhysicalMaterial({ color: tone, emissive: tone, emissiveIntensity: .42, metalness: .45, roughness: .3, flatShading: true }));
-  const trace = ring(.265, tone, .64, .009);
-  trace.rotation.x = .48;
-  group.add(bloom, stone, trace);
-  const target = new THREE.Mesh(new THREE.SphereGeometry(.36, 8, 6), new THREE.MeshBasicMaterial({ visible: false }));
+  const seed = [...dao.name].reduce((sum, glyph) => sum + glyph.charCodeAt(0), 0);
+  const count = seed % 2 === 0 ? 3 : 2;
+  const stars = [];
+  for (let index = 0; index < count; index += 1) {
+    const angle = ((seed * (index + 3)) % 360) / 360 * TAU;
+    const radius = index === 0 ? 0 : .38 + (seed % 5) * .04 + index * .08;
+    const star = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: glowTexture,
+      color: tone,
+      transparent: true,
+      opacity: index === 0 ? .82 : .46,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    }));
+    const size = index === 0 ? .48 : .26;
+    star.scale.set(size, size, 1);
+    star.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius * .82, index * .03);
+    group.add(star);
+    stars.push(star);
+  }
+  const link = line(stars.map((star) => star.position.clone()), tone, .4);
+  group.add(link);
+  const target = new THREE.Mesh(new THREE.SphereGeometry(.4, 8, 6), new THREE.MeshBasicMaterial({ visible: false }));
   target.userData.dao = dao;
   group.add(target);
   group.position.copy(position);
-  group.userData = { bloom, stone, trace, target, sharedGlow: glowTexture, seed: position.x * .8 + position.y };
+  group.userData = { stars, link, target, sharedGlow: glowTexture, seed };
   return group;
 }
 
 function makeSpellNode(spell, index, position, color, glowTexture) {
   const group = new THREE.Group();
-  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color, transparent: true, opacity: .58, blending: THREE.AdditiveBlending, depthWrite: false }));
-  halo.scale.set(1.05, 1.05, 1);
-  const outer = ring(.255, color, .79, .012);
-  const inner = ring(.2, color, .3, .005);
-  inner.rotation.x = .62;
-  const stone = new THREE.Mesh(new THREE.OctahedronGeometry(.083), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .92 }));
-  const target = new THREE.Mesh(new THREE.SphereGeometry(.31, 8, 6), new THREE.MeshBasicMaterial({ visible: false }));
+  const pin = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: glowTexture,
+    color,
+    transparent: true,
+    opacity: .34,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  }));
+  pin.scale.set(.22, .22, 1);
+  const target = new THREE.Mesh(new THREE.SphereGeometry(.3, 8, 6), new THREE.MeshBasicMaterial({ visible: false }));
   target.userData.spell = spell.name;
-  group.add(halo, outer, inner, stone, target);
+  group.add(pin, target);
   group.position.copy(position);
-  group.userData = { halo, outer, stone, seed: index * 1.39, sharedGlow: glowTexture };
+  group.userData = { pin, target, seed: index * 1.39, sharedGlow: glowTexture };
   return group;
 }
 
@@ -280,7 +265,7 @@ export default function ThreeDaoScene({ daos, selected, activeSpell, onChooseDao
     function layoutLabels() {
       camera.updateMatrixWorld();
       field.updateWorldMatrix(true, true);
-      const place = (map, nodes) => {
+      const place = (map, nodes, push) => {
         nodes.forEach((node) => {
           const key = node.userData.labelKey;
           const element = map.get(key);
@@ -289,13 +274,18 @@ export default function ThreeDaoScene({ daos, selected, activeSpell, onChooseDao
           node.getWorldPosition(point);
           point.project(camera);
           const visible = point.z < 1 && point.z > -1 && Math.abs(point.x) < .95 && Math.abs(point.y) < .95;
-          element.style.transform = `translate3d(${(point.x * .5 + .5) * runtime.width}px, ${(-point.y * .5 + .5) * runtime.height}px, 0) translate(-50%, -50%)`;
+          const sx = (point.x * .5 + .5) * runtime.width;
+          const sy = (-point.y * .5 + .5) * runtime.height;
+          const dx = sx - runtime.width / 2;
+          const dy = sy - runtime.height / 2;
+          const length = Math.hypot(dx, dy) || 1;
+          element.style.transform = `translate3d(${sx + (dx / length) * push}px, ${sy + (dy / length) * push}px, 0) translate(-50%, -50%)`;
           element.style.opacity = visible ? String(THREE.MathUtils.clamp(1.3 - Math.max(0, -node.position.z) * .45, .5, 1)) : '0';
           element.style.pointerEvents = visible ? '' : 'none';
         });
       };
-      place(labelRefs.current, runtime.daoNodes);
-      place(spellRefs.current, runtime.spellNodes);
+      place(labelRefs.current, runtime.daoNodes, 18);
+      place(spellRefs.current, runtime.spellNodes, 0);
     }
 
     function draw(time = 0) {
@@ -303,24 +293,12 @@ export default function ThreeDaoScene({ daos, selected, activeSpell, onChooseDao
       const delta = runtime.lastTime ? Math.min((time - runtime.lastTime) * .001, .06) : 0;
       runtime.lastTime = time;
       if (runtime.motion && delta) {
-        runtime.targetRotation.y += delta * .018;
         runtime.rotation.y += (runtime.targetRotation.y - runtime.rotation.y) * Math.min(1, delta * 5);
         runtime.rotation.x += (runtime.targetRotation.x - runtime.rotation.x) * Math.min(1, delta * 5);
-        heart.rotation.z = Math.sin(seconds * .19) * .028;
-        heart.userData.orbitA.rotation.z = -.42 + seconds * .045;
-        heart.userData.orbitB.rotation.z = .36 - seconds * .037;
-        heart.userData.fragments.rotation.z = seconds * .065;
-        if (runtime.selectedTrace) runtime.selectedTrace.material.opacity = .29 + Math.sin(seconds * 1.1) * .07;
-        if (runtime.selectionGroup?.userData.aspect) runtime.selectionGroup.userData.aspect.rotation.z = seconds * .022;
-        if (runtime.manifestGroup) runtime.manifestGroup.rotation.z = Math.sin(seconds * 1.2) * .055;
-        runtime.daoNodes.forEach((node) => {
-          node.children[1].rotation.y += delta * .31;
-          node.position.y = node.userData.homeY + Math.sin(seconds * .75 + node.userData.seed) * .026;
-        });
-        runtime.spellNodes.forEach((node) => {
-          node.position.y = node.userData.homeY + Math.sin(seconds * 1.3 + node.userData.seed) * .045;
-          node.userData.stone.rotation.y += delta * .75;
-        });
+        if (runtime.manifestGroup?.userData.stamp > 0) {
+          runtime.manifestGroup.userData.stamp = Math.max(0, runtime.manifestGroup.userData.stamp - delta * 1.7);
+          runtime.manifestGroup.scale.setScalar(1 + runtime.manifestGroup.userData.stamp * .32);
+        }
       } else {
         runtime.rotation.x = runtime.targetRotation.x;
         runtime.rotation.y = runtime.targetRotation.y;
@@ -444,21 +422,12 @@ export default function ThreeDaoScene({ daos, selected, activeSpell, onChooseDao
     runtime.targets = [...runtime.daoNodes.map((node) => node.userData.target), ...nodes.map((node) => node.userData.target)];
 
     const selection = new THREE.Group();
-    const glyphTexture = makeGlyphTexture(selected.glyph, palette[selected.tone] ?? selected.color);
-    const glyph = new THREE.Mesh(new THREE.PlaneGeometry(1.05, 1.05), new THREE.MeshBasicMaterial({ map: glyphTexture, transparent: true, opacity: .94, depthWrite: false, side: THREE.DoubleSide }));
+    const glyphTexture = makeGlyphTexture(selected.glyph, '#d4533c');
+    const glyph = new THREE.Mesh(new THREE.PlaneGeometry(.92, .92), new THREE.MeshBasicMaterial({ map: glyphTexture, transparent: true, opacity: .94, depthWrite: false, side: THREE.DoubleSide }));
     glyph.position.z = .16;
     selection.add(glyph);
-    const halo = ring(.57, color, .29, .009);
-    halo.position.z = .11;
-    selection.add(halo);
-    const aspect = makeAspect(selected.tone, color, runtime.glow);
+    const aspect = makeAspect(selected.tone, color);
     selection.add(aspect);
-    for (let index = 0; index < 8; index += 1) {
-      const angle = index / 8 * TAU;
-      const dot = new THREE.Mesh(new THREE.OctahedronGeometry(index % 2 ? .026 : .04), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .7 }));
-      dot.position.set(Math.cos(angle) * .62, Math.sin(angle) * .62, .14);
-      selection.add(dot);
-    }
     runtime.heart.userData.faceWash.material.color.copy(color);
     runtime.heart.userData.aura.material.color.copy(color);
     runtime.heart.add(selection);
@@ -466,10 +435,13 @@ export default function ThreeDaoScene({ daos, selected, activeSpell, onChooseDao
     runtime.selectionGroup = selection;
     runtime.daoNodes.forEach((node) => {
       const active = node.userData.target.userData.dao.id === selected.id;
-      node.userData.stone.material.emissiveIntensity = active ? 1.8 : .42;
-      node.userData.bloom.material.opacity = active ? .88 : .48;
-      node.userData.trace.material.opacity = active ? .95 : .64;
-      node.scale.setScalar(active ? 1.4 : 1);
+      node.userData.stars.forEach((star, index) => {
+        star.material.opacity = active ? (index === 0 ? 1 : .82) : (index === 0 ? .5 : .28);
+        const size = active ? (index === 0 ? .68 : .36) : (index === 0 ? .48 : .26);
+        star.scale.set(size, size, 1);
+      });
+      node.userData.link.material.opacity = active ? .88 : .28;
+      node.scale.setScalar(active ? 1.18 : 1);
     });
     runtime.draw(performance.now());
   }, [daos, selected, spells]);
@@ -484,27 +456,25 @@ export default function ThreeDaoScene({ daos, selected, activeSpell, onChooseDao
     if (runtime.selectionGroup) runtime.selectionGroup.userData.glyph.material.opacity = activeSpell ? .18 : .94;
     runtime.spellNodes.forEach((node) => {
       const active = node.userData.labelKey === activeSpell;
-      node.userData.halo.material.opacity = active ? .98 : .58;
-      node.userData.outer.material.opacity = active ? 1 : .79;
-      node.scale.setScalar(active ? 1.28 : 1);
+      node.userData.pin.material.opacity = active ? .72 : .2;
     });
     if (activeSpell) {
-      const color = new THREE.Color(palette[selected.tone] ?? selected.color);
       const manifest = new THREE.Group();
-      const glyphTexture = makeGlyphTexture(activeSpell.slice(0, 1), '#f6dfab');
-      const glyph = new THREE.Mesh(new THREE.PlaneGeometry(1.16, 1.16), new THREE.MeshBasicMaterial({ map: glyphTexture, transparent: true, opacity: 1, depthWrite: false, side: THREE.DoubleSide }));
+      const glyphTexture = makeGlyphTexture(activeSpell.slice(0, 1), '#d4533c');
+      const glyph = new THREE.Mesh(new THREE.PlaneGeometry(1.05, 1.05), new THREE.MeshBasicMaterial({ map: glyphTexture, transparent: true, opacity: 1, depthWrite: false, side: THREE.DoubleSide }));
       glyph.position.z = .29;
       manifest.add(glyph);
-      const seal = ring(.69, color, .73, .013);
+      const seal = ring(.62, '#9c3b32', .8, .012);
       seal.position.z = .24;
       manifest.add(seal);
       const node = runtime.spellNodes.find((item) => item.userData.labelKey === activeSpell);
       if (node) {
         const start = new THREE.Vector3().copy(node.position);
-        const arc = new THREE.QuadraticBezierCurve3(start, new THREE.Vector3(start.x * .4, start.y * .4, 1.12), new THREE.Vector3(0, 0, .4));
-        manifest.add(line(arc.getPoints(36), '#f6e1b5', .69));
+        const arc = new THREE.QuadraticBezierCurve3(start, new THREE.Vector3(start.x * .35, start.y * .35, .9), new THREE.Vector3(0, 0, .36));
+        manifest.add(line(arc.getPoints(36), '#c6b48a', .55));
       }
-      manifest.userData.sharedGlow = runtime.glow;
+      manifest.userData = { stamp: runtime.motion ? 1 : 0, sharedGlow: runtime.glow };
+      manifest.scale.setScalar(runtime.motion ? 1.32 : 1);
       runtime.field.add(manifest);
       runtime.manifestGroup = manifest;
     }
@@ -563,11 +533,11 @@ export default function ThreeDaoScene({ daos, selected, activeSpell, onChooseDao
         {daos.map((dao, index) => <button
           key={dao.id}
           ref={(node) => { if (node) labelRefs.current.set(dao.id, node); else labelRefs.current.delete(dao.id); }}
-          className={`dao-marker ${dao.id === selected?.id ? 'dao-marker-active' : ''} ${daos.length > 16 && index % 2 && dao.id !== selected?.id ? 'dao-marker-dense' : ''} ${daos.length > 12 && index % 4 && dao.id !== selected?.id ? 'dao-marker-mobile-hidden' : ''}`}
+          className={`dao-marker ${dao.id === selected?.id ? 'dao-marker-active' : ''} ${daos.length > 12 && index % 3 && dao.id !== selected?.id ? 'dao-marker-mobile-hidden' : ''}`}
           style={{ '--tone': palette[dao.tone] ?? dao.color }}
           aria-label={`${dao.name}道统，${dao.spells.length}项神通`}
           onClick={() => onChooseDao(dao)}
-        ><span>{dao.name}</span><small>{dao.spells.length || '—'}</small></button>)}
+        ><span>{dao.name}</span></button>)}
       </div>}
       {supported && <div className="scene-labels spell-labels" aria-label="所选道统的神通">
         {spells.map((spell, index) => <button
@@ -577,12 +547,11 @@ export default function ThreeDaoScene({ daos, selected, activeSpell, onChooseDao
           style={{ '--tone': palette[selected.tone] ?? selected.color }}
           onClick={() => onChooseSpell(spell.name)}
           aria-label={`${spell.name}神通${activeSpell === spell.name ? '，正在观想' : ''}`}
-        ><i aria-hidden="true">{spell.name.slice(0, 1)}</i><span>{spell.name}</span></button>)}
+        ><b aria-hidden="true">{spell.name.slice(0, 1)}</b><em>{spell.name.slice(1)}</em></button>)}
       </div>}
       <div className="heart-title" aria-hidden="true"><span>{activeSpell ? `${selected?.name} · 神通观想` : selected?.tierLabel}</span><strong>{activeSpell ?? selected?.name}</strong><small>{activeSpell ? '法印已启 · 再点可收起' : spells.length ? `${spells.length} 道神通 · 万象生法` : '神通待考 · 道韵犹存'}</small></div>
-      <div className="scene-compass" aria-hidden="true">N<span>北辰</span></div>
-      <div className="scene-coordinates"><span>观想坐标 / THE VOID</span><strong>玄鉴 · 太虚 · {groupName}</strong></div>
-      <div className="scene-instruction">拖曳星图 · 点击道统与法印</div>
+      <div className="scene-coordinates"><strong>玄鉴 · 太虚 · {groupName}</strong></div>
+      <div className="scene-instruction">拨转星图 · 点星宿与符印</div>
       <div className="scene-vignette" aria-hidden="true" />
     </div>
   );
